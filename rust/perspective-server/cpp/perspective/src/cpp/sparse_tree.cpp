@@ -30,6 +30,7 @@
 #include <perspective/data_table.h>
 #include <perspective/filter_utils.h>
 #include <perspective/context_two.h>
+#include <perspective/udf_registry.h>
 #include <set>
 #include <utility>
 
@@ -1734,7 +1735,32 @@ t_stree::update_agg_table(
             } break;
             case AGGTYPE_UDF_COMBINER:
             case AGGTYPE_UDF_REDUCER: {
-                // these will be filled in later
+                load_udf_plugins_from_env();
+
+                t_udf_reducer reducer = get_udf_reducer(spec.disp_name());
+                if (!reducer) {
+                    PSP_COMPLAIN_AND_ABORT(
+                        "No UDF reducer registered for " << spec.disp_name()
+                    );
+                }
+
+                auto pkeys = get_pkeys(nidx);
+                t_udf_column_values columns;
+                for (const auto& dep : spec.get_dependencies()) {
+                    std::vector<t_tscalar> dep_values;
+                    read_column_from_gstate(
+                        gstate,
+                        expression_master_table,
+                        dep.name(),
+                        pkeys,
+                        dep_values
+                    );
+                    columns.emplace(dep.name(), std::move(dep_values));
+                }
+
+                old_value.set(dst->get_scalar(dst_ridx));
+                new_value.set(reducer(columns));
+                dst->set_scalar(dst_ridx, new_value);
             } break;
             case AGGTYPE_SUM_NOT_NULL: {
                 old_value.set(dst->get_scalar(dst_ridx));

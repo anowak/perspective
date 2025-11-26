@@ -493,6 +493,7 @@ set(SOURCE_FILES
     ${PSP_CPP_SRC}/src/cpp/sort_specification.cpp
     ${PSP_CPP_SRC}/src/cpp/sparse_tree.cpp
     ${PSP_CPP_SRC}/src/cpp/sparse_tree_node.cpp
+    ${PSP_CPP_SRC}/src/cpp/udf_registry.cpp
     ${PSP_CPP_SRC}/src/cpp/step_delta.cpp
     ${PSP_CPP_SRC}/src/cpp/storage.cpp
     ${PSP_CPP_SRC}/src/cpp/storage_impl_linux.cpp
