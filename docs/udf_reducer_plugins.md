@@ -17,8 +17,7 @@ configurations as `udf_reducer_my_sum`.
 using namespace perspective;
 
 extern "C" void perspective_register_udf_reducers() {
-    register_udf_reducer("my_sum", [](const t_udf_column_values& columns) {
-        const auto& values = columns.at("column");
+    register_udf_reducer("my_sum", [](std::vector<t_tscalar>& values) {
         t_tscalar total;
         total.set(std::int64_t(0));
         for (const auto& value : values) {
@@ -31,8 +30,8 @@ extern "C" void perspective_register_udf_reducers() {
 }
 ```
 
-The `t_udf_column_values` map includes one entry per dependency declared on the
-aggregation, keyed by dependency name.
+The reducer receives the `std::vector<t_tscalar>` values for the aggregation's
+single dependency column.
 
 ## Loading plugins
 

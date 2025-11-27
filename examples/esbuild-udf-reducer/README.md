@@ -29,3 +29,14 @@ on port `8081`. Visit http://localhost:8081 to see the running total UDF applied
 in the `<perspective-viewer>` grid. The browser bundle sets the
 `udf_reducer_running_total` aggregate on the `value` column, so you can see the
 plugin result immediately once the server streams data.
+
+## Verifying the reducer from Node
+
+With the server running, you can exercise the UDF reducer without a browser:
+
+```bash
+pnpm --filter esbuild-udf-reducer test
+```
+
+The test connects over WebSocket and asserts that the reducer returns the
+expected totals for each client group.

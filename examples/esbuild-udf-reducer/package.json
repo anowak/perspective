@@ -4,7 +4,8 @@
     "version": "4.0.0",
     "description": "Bundle a reducer UDF plugin and exercise it from a browser via WebSocket.",
     "scripts": {
-        "start": "node build.js && node server/index.mjs"
+        "start": "node build.js && node server/index.mjs",
+        "test": "node test.mjs"
     },
     "keywords": [],
     "license": "Apache-2.0",

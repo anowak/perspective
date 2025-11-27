@@ -20,8 +20,7 @@
 
 namespace perspective {
 
-using t_udf_column_values = std::unordered_map<std::string, std::vector<t_tscalar>>;
-using t_udf_reducer = std::function<t_tscalar(const t_udf_column_values&)>;
+using t_udf_reducer = std::function<t_tscalar(std::vector<t_tscalar>&)>;
 
 /**
  * Register a reducer UDF by name. Users are expected to call this from a plugin

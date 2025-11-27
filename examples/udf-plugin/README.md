@@ -3,10 +3,11 @@
 This example shows how to package reducer UDFs in a shared library and use them
 from a Perspective application without modifying the main source code.
 
-The sample plugin registers one callback:
+The sample plugin registers one callback that consumes a single dependency's
+values:
 
-- `udf_reducer_running_total` – a reducer that sums every `value` column it
-  sees.
+- `udf_reducer_running_total` – a reducer that sums every `value` column it sees
+  when the aggregation uses `dependencies: ["value"]`.
 
 ## Building the plugin
 

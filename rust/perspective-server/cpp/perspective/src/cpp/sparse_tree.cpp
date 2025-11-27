@@ -1746,8 +1746,10 @@ t_stree::update_agg_table(
                 }
 
                 const auto& dependencies = spec.get_dependencies();
-                if (dependencies.empty()) {
-                    PSP_COMPLAIN_AND_ABORT("UDF reducer requires at least one dependency");
+                if (dependencies.size() != 1) {
+                    PSP_COMPLAIN_AND_ABORT(
+                        "UDF reducer requires exactly one dependency column"
+                    );
                 }
 
                 old_value.set(dst->get_scalar(dst_ridx));
@@ -1760,30 +1762,7 @@ t_stree::update_agg_table(
                         expression_master_table,
                         dependencies[0].name(),
                         pkeys,
-                        [&](std::vector<t_tscalar>& first_column) {
-                            t_udf_column_values columns;
-                            columns.emplace(dependencies[0].name(), first_column);
-
-                            for (auto dep_it = dependencies.begin() + 1;
-                                 dep_it != dependencies.end(); ++dep_it) {
-                                columns.emplace(
-                                    dep_it->name(),
-                                    reduce_from_gstate<
-                                        std::function<std::vector<t_tscalar>(
-                                            std::vector<t_tscalar>&)>>( 
-                                        gstate,
-                                        expression_master_table,
-                                        dep_it->name(),
-                                        pkeys,
-                                        [](std::vector<t_tscalar>& values) {
-                                            return values;
-                                        }
-                                    )
-                                );
-                            }
-
-                            return reducer(columns);
-                        }
+                        reducer
                     )
                 );
 
