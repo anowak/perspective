@@ -1745,27 +1745,48 @@ t_stree::update_agg_table(
                     );
                 }
 
-                auto pkeys = get_pkeys(nidx);
-                t_udf_column_values columns;
-                for (const auto& dep : spec.get_dependencies()) {
-                    columns.emplace(
-                        dep.name(),
-                        reduce_from_gstate<
-                            std::function<std::vector<t_tscalar>(
-                                std::vector<t_tscalar>&)>>(
-                            gstate,
-                            expression_master_table,
-                            dep.name(),
-                            pkeys,
-                            [](std::vector<t_tscalar>& values) {
-                                return values;
-                            }
-                        )
-                    );
+                const auto& dependencies = spec.get_dependencies();
+                if (dependencies.empty()) {
+                    PSP_COMPLAIN_AND_ABORT("UDF reducer requires at least one dependency");
                 }
 
                 old_value.set(dst->get_scalar(dst_ridx));
-                new_value.set(reducer(columns));
+                auto pkeys = get_pkeys(nidx);
+
+                new_value.set(
+                    reduce_from_gstate<
+                        std::function<t_tscalar(std::vector<t_tscalar>&)>>( 
+                        gstate,
+                        expression_master_table,
+                        dependencies[0].name(),
+                        pkeys,
+                        [&](std::vector<t_tscalar>& first_column) {
+                            t_udf_column_values columns;
+                            columns.emplace(dependencies[0].name(), first_column);
+
+                            for (auto dep_it = dependencies.begin() + 1;
+                                 dep_it != dependencies.end(); ++dep_it) {
+                                columns.emplace(
+                                    dep_it->name(),
+                                    reduce_from_gstate<
+                                        std::function<std::vector<t_tscalar>(
+                                            std::vector<t_tscalar>&)>>( 
+                                        gstate,
+                                        expression_master_table,
+                                        dep_it->name(),
+                                        pkeys,
+                                        [](std::vector<t_tscalar>& values) {
+                                            return values;
+                                        }
+                                    )
+                                );
+                            }
+
+                            return reducer(columns);
+                        }
+                    )
+                );
+
                 dst->set_scalar(dst_ridx, new_value);
             } break;
             case AGGTYPE_SUM_NOT_NULL: {
