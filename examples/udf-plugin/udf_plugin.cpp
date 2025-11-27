@@ -5,22 +5,35 @@
 using namespace perspective;
 
 extern "C" void perspective_register_udf_reducers() {
-    register_udf_reducer("running_total", [](std::vector<t_tscalar>& values) {
-        if (values.empty()) {
-            t_tscalar none;
-            none.clear();
-            return none;
-        }
+    register_udf_reducer("join_lines", [](std::vector<t_tscalar>& values) {
+        std::string joined;
+        bool first = true;
 
-        t_tscalar running;
-        running.set(std::int64_t(0));
-
-        for (const auto& item : values) {
-            if (item.is_valid() && !item.is_nan()) {
-                running = running.add(item);
+        for (const auto& value : values) {
+            if (!value.is_valid() || value.is_nan()) {
+                continue;
             }
+
+            std::string as_string = value.to_string();
+            if (as_string.empty()) {
+                continue;
+            }
+
+            if (!first) {
+                joined += "\n";
+            }
+
+            joined += as_string;
+            first = false;
         }
 
-        return running;
+        t_tscalar result;
+        if (first) {
+            result.clear();
+        } else {
+            result.set(joined);
+        }
+
+        return result;
     });
 }

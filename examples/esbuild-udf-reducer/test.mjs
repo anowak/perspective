@@ -5,11 +5,14 @@ const websocket = await perspective.websocket("ws://localhost:8081/subscribe");
 const table = await websocket.open_table("securities");
 
 const view = await table.view({
-    group_by: ["client"],
-    columns: ["vol"],
+    group_by: ["name"],
+    columns: ["client"],
+    sort: [
+        ["name", "asc"],
+    ],
     aggregates: {
-        client: "first",
-        vol: "udf_reducer_running_total",
+        name: "first",
+        client: "udf_reducer_join_lines",
     },
 });
 
@@ -17,10 +20,11 @@ const result = await view.to_columns();
 await view.delete();
 await websocket.close();
 
-// Each client should report the running total for all rows in its group.
+// Each security should show all clients joined with newlines (fixture rows used
+// when `PERSPECTIVE_UDF_STATIC=1`).
 const expected = {
-    client: ["CLIENT_1", "CLIENT_2", "CLIENT_3"],
-    vol: ["817727", "759594", "489467"],
+    name: ["AAPL.N", "AMZN.N", "NVDA.N"],
+    client: ["Ada\nBen", "Ada\nCara", "Ben\nDana"],
 };
 
 assert.deepEqual(result, expected);

@@ -54,6 +54,15 @@ const CLIENTS = [
     "Krusty",
 ];
 
+const STATIC_ROWS = [
+    { name: "AAPL.N", client: "Ada" },
+    { name: "AAPL.N", client: "Ben" },
+    { name: "AMZN.N", client: "Ada" },
+    { name: "AMZN.N", client: "Cara" },
+    { name: "NVDA.N", client: "Ben" },
+    { name: "NVDA.N", client: "Dana" },
+];
+
 const __CACHE__ = [];
 
 // perspective.initialize_profile_thread();
@@ -101,6 +110,12 @@ async function init_dynamic({ table_size, update_size, tick_rate }) {
     return table;
 }
 
+async function init_static() {
+    return perspective.table(STATIC_ROWS, {
+        name: "securities",
+    });
+}
+
 /*******************************************************************************
  *
  * Fast mode (rows pre-generated, cached as Arrows)
@@ -145,6 +160,10 @@ export const getTable = (
         cache_entries: CACHE_ENTRIES,
     },
 ) => {
+    if (process.env.PERSPECTIVE_UDF_STATIC === "1") {
+        return init_static();
+    }
+
     if (config.cached) {
         return init_cached(config);
     } else {

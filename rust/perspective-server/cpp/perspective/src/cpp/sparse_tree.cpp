@@ -1756,8 +1756,7 @@ t_stree::update_agg_table(
                 auto pkeys = get_pkeys(nidx);
 
                 new_value.set(
-                    reduce_from_gstate<
-                        std::function<t_tscalar(std::vector<t_tscalar>&)>>( 
+                    reduce_from_gstate<t_udf_reducer>(
                         gstate,
                         expression_master_table,
                         dependencies[0].name(),

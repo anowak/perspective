@@ -6,8 +6,9 @@ from a Perspective application without modifying the main source code.
 The sample plugin registers one callback that consumes a single dependency's
 values:
 
-- `udf_reducer_running_total` – a reducer that sums every `value` column it sees
-  when the aggregation uses `dependencies: ["value"]`.
+- `udf_reducer_join_lines` – concatenates string values into a single newline-
+  separated block when the aggregation uses `dependencies: ["client"]` (or any
+  other string column).
 
 ## Building the plugin
 
@@ -42,7 +43,7 @@ platform).
        group_by: ["city"],
        aggregates: {
            city: "count",
-           running_total: "udf_reducer_running_total"
+           clients: "udf_reducer_join_lines"
        }
    });
    ```

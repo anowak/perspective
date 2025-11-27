@@ -43,14 +43,14 @@ const remote_table = await websocket.open_table("securities");
 
 // Demonstrate invoking the reducer UDF that is registered by the
 // shared-library plugin. The aggregate key must match the reducer name
-// (`udf_reducer_<name>`), and the table must include a `value` column
-// for the sample callback.
+// (`udf_reducer_<name>`). The sample callback concatenates string values
+// from the `client` column using newline separators.
 const view = await remote_table.view({
-    group_by: ["client"],
-    columns: ["vol"],
+    group_by: ["name"],
+    columns: ["client"],
     aggregates: {
-        client: "first",
-        vol: "udf_reducer_running_total",
+        name: "first",
+        client: "udf_reducer_join_lines",
     },
 });
 

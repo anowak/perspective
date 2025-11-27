@@ -17,21 +17,42 @@ configurations as `udf_reducer_my_sum`.
 using namespace perspective;
 
 extern "C" void perspective_register_udf_reducers() {
-    register_udf_reducer("my_sum", [](std::vector<t_tscalar>& values) {
-        t_tscalar total;
-        total.set(std::int64_t(0));
+    register_udf_reducer("join_lines", [](std::vector<t_tscalar>& values) {
+        std::string out;
+        bool first = true;
+
         for (const auto& value : values) {
-            if (value.is_valid() && !value.is_nan()) {
-                total = total.add(value);
+            if (!value.is_valid()) {
+                continue;
             }
+
+            std::string str = value.to_string();
+            if (str.empty()) {
+                continue;
+            }
+
+            if (!first) {
+                out += "\n";
+            }
+
+            out += str;
+            first = false;
         }
-        return total;
+
+        t_tscalar result;
+        if (first) {
+            result.clear();
+        } else {
+            result.set(out);
+        }
+
+        return result;
     });
 }
 ```
 
 The reducer receives the `std::vector<t_tscalar>` values for the aggregation's
-single dependency column.
+single dependency column and returns a `t_tscalar` result.
 
 ## Loading plugins
 
