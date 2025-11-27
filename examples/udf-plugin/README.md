@@ -1,15 +1,12 @@
 # UDF plugin example
 
-This example shows how to package reducer and combiner UDFs in a shared library
-and use them from a Perspective application without modifying the main source
-code.
+This example shows how to package reducer UDFs in a shared library and use them
+from a Perspective application without modifying the main source code.
 
-The sample plugin registers two callbacks:
+The sample plugin registers one callback:
 
 - `udf_reducer_running_total` – a reducer that sums every `value` column it
   sees.
-- `udf_combiner_full_name` – a combiner that joins `first_name` and
-  `last_name` pairs together.
 
 ## Building the plugin
 
@@ -44,8 +41,7 @@ platform).
        group_by: ["city"],
        aggregates: {
            city: "count",
-           running_total: "udf_reducer_running_total",
-           full_name: "udf_combiner_full_name"
+           running_total: "udf_reducer_running_total"
        }
    });
    ```

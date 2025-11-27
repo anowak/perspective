@@ -209,11 +209,6 @@ t_aggspec::agg_str() const {
         case AGGTYPE_HIGH_MINUS_LOW: {
             return "high minuslow";
         } break;
-        case AGGTYPE_UDF_COMBINER: {
-            std::stringstream ss;
-            ss << "udf_combiner_" << disp_name();
-            return ss.str();
-        }
         case AGGTYPE_UDF_REDUCER: {
 
             std::stringstream ss;
@@ -396,7 +391,6 @@ t_aggspec::get_output_specs(const t_schema& schema) const {
         case AGGTYPE_STANDARD_DEVIATION: {
             return mk_col_name_type_vec(name(), DTYPE_FLOAT64);
         }
-        case AGGTYPE_UDF_COMBINER:
         case AGGTYPE_UDF_REDUCER: {
             std::vector<t_col_name_type> rval;
             rval.reserve(m_odependencies.size());
@@ -426,11 +420,6 @@ t_aggspec::mk_col_name_type_vec(const std::string& name, t_dtype dtype) const {
     rval[0].m_name = name;
     rval[0].m_type = dtype;
     return rval;
-}
-
-bool
-t_aggspec::is_combiner_agg() const {
-    return m_agg == AGGTYPE_UDF_COMBINER;
 }
 
 bool

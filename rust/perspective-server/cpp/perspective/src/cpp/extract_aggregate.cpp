@@ -78,7 +78,6 @@ extract_aggregate(
         case AGGTYPE_SCALED_DIV:
         case AGGTYPE_SCALED_ADD:
         case AGGTYPE_SCALED_MUL:
-        case AGGTYPE_UDF_COMBINER:
         case AGGTYPE_UDF_REDUCER:
         case AGGTYPE_JOIN:
         case AGGTYPE_IDENTITY:

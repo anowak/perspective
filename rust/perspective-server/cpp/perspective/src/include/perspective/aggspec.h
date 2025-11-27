@@ -93,7 +93,6 @@ public:
     std::vector<t_col_name_type> get_output_specs(const t_schema& schema) const;
     std::vector<t_col_name_type>
     mk_col_name_type_vec(const std::string& name, t_dtype dtype) const;
-    bool is_combiner_agg() const;
     bool is_reducer_agg() const;
 
     bool is_non_delta() const;

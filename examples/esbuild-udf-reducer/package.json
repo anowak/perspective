@@ -1,0 +1,21 @@
+{
+    "name": "esbuild-udf-reducer",
+    "private": true,
+    "version": "4.0.0",
+    "description": "Bundle a reducer UDF plugin and exercise it from a browser via WebSocket.",
+    "scripts": {
+        "start": "node build.js && node server/index.mjs"
+    },
+    "keywords": [],
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@perspective-dev/client": "workspace:",
+        "@perspective-dev/viewer": "workspace:",
+        "@perspective-dev/viewer-d3fc": "workspace:",
+        "@perspective-dev/viewer-datagrid": "workspace:",
+        "ws": "catalog:"
+    },
+    "devDependencies": {
+        "esbuild": "catalog:"
+    }
+}

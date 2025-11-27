@@ -31,6 +31,7 @@
 #include <perspective/filter_utils.h>
 #include <perspective/context_two.h>
 #include <perspective/udf_registry.h>
+#include <functional>
 #include <set>
 #include <utility>
 
@@ -1733,48 +1734,38 @@ t_stree::update_agg_table(
                 new_value.set(second.sub_typesafe(first));
                 dst->set_scalar(dst_ridx, new_value);
             } break;
-            case AGGTYPE_UDF_COMBINER:
             case AGGTYPE_UDF_REDUCER: {
                 load_udf_plugins_from_env();
 
-                bool is_combiner = spec.agg() == AGGTYPE_UDF_COMBINER;
-                t_udf_reducer reducer = nullptr;
-                t_udf_combiner combiner = nullptr;
+                t_udf_reducer reducer = get_udf_reducer(spec.disp_name());
 
-                if (is_combiner) {
-                    combiner = get_udf_combiner(spec.disp_name());
-                } else {
-                    reducer = get_udf_reducer(spec.disp_name());
-                }
-
-                if (!reducer && !combiner) {
+                if (!reducer) {
                     PSP_COMPLAIN_AND_ABORT(
-                        "No UDF "
-                        << (is_combiner ? "combiner" : "reducer")
-                        << " registered for " << spec.disp_name()
+                        "No UDF reducer registered for " << spec.disp_name()
                     );
                 }
 
                 auto pkeys = get_pkeys(nidx);
                 t_udf_column_values columns;
                 for (const auto& dep : spec.get_dependencies()) {
-                    std::vector<t_tscalar> dep_values;
-                    read_column_from_gstate(
-                        gstate,
-                        expression_master_table,
+                    columns.emplace(
                         dep.name(),
-                        pkeys,
-                        dep_values
+                        reduce_from_gstate<
+                            std::function<std::vector<t_tscalar>(
+                                std::vector<t_tscalar>&)>>(
+                            gstate,
+                            expression_master_table,
+                            dep.name(),
+                            pkeys,
+                            [](std::vector<t_tscalar>& values) {
+                                return values;
+                            }
+                        )
                     );
-                    columns.emplace(dep.name(), std::move(dep_values));
                 }
 
                 old_value.set(dst->get_scalar(dst_ridx));
-                if (is_combiner) {
-                    new_value.set(combiner(columns));
-                } else {
-                    new_value.set(reducer(columns));
-                }
+                new_value.set(reducer(columns));
                 dst->set_scalar(dst_ridx, new_value);
             } break;
             case AGGTYPE_SUM_NOT_NULL: {

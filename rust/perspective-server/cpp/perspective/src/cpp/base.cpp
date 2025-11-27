@@ -577,9 +577,6 @@ str_to_aggtype(const std::string& str) {
         || str == "pct sum grand total" || str == "pct_sum_grand_total") {
         return t_aggtype::AGGTYPE_PCT_SUM_GRAND_TOTAL;
     }
-    if (str.find("udf_combiner_") != std::string::npos) {
-        return t_aggtype::AGGTYPE_UDF_COMBINER;
-    }
     if (str.find("udf_reducer_") != std::string::npos) {
         return t_aggtype::AGGTYPE_UDF_REDUCER;
     }
