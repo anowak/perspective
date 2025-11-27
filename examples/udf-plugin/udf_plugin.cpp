@@ -31,7 +31,7 @@ extern "C" void perspective_register_udf_reducers() {
         if (first) {
             result.clear();
         } else {
-            result.set(joined);
+            result.set(joined.c_str());
         }
 
         return result;
