@@ -22,6 +22,7 @@ namespace perspective {
 
 using t_udf_column_values = std::unordered_map<std::string, std::vector<t_tscalar>>;
 using t_udf_reducer = std::function<t_tscalar(const t_udf_column_values&)>;
+using t_udf_combiner = std::function<t_tscalar(const t_udf_column_values&)>;
 
 /**
  * Register a reducer UDF by name. Users are expected to call this from a plugin
@@ -34,10 +35,26 @@ PERSPECTIVE_EXPORT void register_udf_reducer(
 );
 
 /**
+ * Register a combiner UDF by name. Users are expected to call this from a
+ * plugin or embeddor binary before executing a query that references
+ * `AGGTYPE_UDF_COMBINER` aggregations named `udf_combiner_<name>`.
+ */
+PERSPECTIVE_EXPORT void register_udf_combiner(
+    const std::string& name,
+    t_udf_combiner combiner
+);
+
+/**
  * Retrieve a reducer UDF by name. Returns `nullptr` if the reducer is not
  * available.
  */
 PERSPECTIVE_EXPORT t_udf_reducer get_udf_reducer(const std::string& name);
+
+/**
+ * Retrieve a combiner UDF by name. Returns `nullptr` if the combiner is not
+ * available.
+ */
+PERSPECTIVE_EXPORT t_udf_combiner get_udf_combiner(const std::string& name);
 
 /**
  * Load reducer UDF plugins described by the environment variable
@@ -51,6 +68,7 @@ PERSPECTIVE_EXPORT void load_udf_plugins_from_env();
  * its reducers.
  */
 using t_udf_registration_fn = void (*)();
+using t_udf_combiner_registration_fn = void (*)();
 
 } // namespace perspective
 

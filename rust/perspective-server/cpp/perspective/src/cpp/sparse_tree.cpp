@@ -1737,10 +1737,21 @@ t_stree::update_agg_table(
             case AGGTYPE_UDF_REDUCER: {
                 load_udf_plugins_from_env();
 
-                t_udf_reducer reducer = get_udf_reducer(spec.disp_name());
-                if (!reducer) {
+                bool is_combiner = spec.agg() == AGGTYPE_UDF_COMBINER;
+                t_udf_reducer reducer = nullptr;
+                t_udf_combiner combiner = nullptr;
+
+                if (is_combiner) {
+                    combiner = get_udf_combiner(spec.disp_name());
+                } else {
+                    reducer = get_udf_reducer(spec.disp_name());
+                }
+
+                if (!reducer && !combiner) {
                     PSP_COMPLAIN_AND_ABORT(
-                        "No UDF reducer registered for " << spec.disp_name()
+                        "No UDF "
+                        << (is_combiner ? "combiner" : "reducer")
+                        << " registered for " << spec.disp_name()
                     );
                 }
 
@@ -1759,7 +1770,11 @@ t_stree::update_agg_table(
                 }
 
                 old_value.set(dst->get_scalar(dst_ridx));
-                new_value.set(reducer(columns));
+                if (is_combiner) {
+                    new_value.set(combiner(columns));
+                } else {
+                    new_value.set(reducer(columns));
+                }
                 dst->set_scalar(dst_ridx, new_value);
             } break;
             case AGGTYPE_SUM_NOT_NULL: {
