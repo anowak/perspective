@@ -18,15 +18,21 @@ const view = await table.view({
 
 const result = await view.to_columns();
 await view.delete();
-await websocket.close();
 
-// Each security should show all clients joined with newlines (fixture rows used
-// when `PERSPECTIVE_UDF_STATIC=1`).
-const expected = {
-    name: ["AAPL.N", "AMZN.N", "NVDA.N"],
-    client: ["Ada\nBen", "Ada\nCara", "Ben\nDana"],
-};
+// The first row is the grand total; skip it and compare grouped rows.
+const rows = result.__ROW_PATH__
+    .map((path, idx) => ({
+        name: path[0],
+        client: result.client[idx],
+    }))
+    .filter((row) => row.name);
 
-assert.deepEqual(result, expected);
+const expected = [
+    { name: "AAPL.N", client: "Ada\nBen" },
+    { name: "AMZN.N", client: "Ada\nCara" },
+    { name: "NVDA.N", client: "Ben\nDana" },
+];
+
+assert.deepEqual(rows, expected);
 
 console.log("UDF reducer aggregation verified.");

@@ -1741,7 +1741,8 @@ t_stree::update_agg_table(
 
                 if (!reducer) {
                     PSP_COMPLAIN_AND_ABORT(
-                        "No UDF reducer registered for " << spec.disp_name()
+                        std::string("No UDF reducer registered for ")
+                        + spec.disp_name()
                     );
                 }
 
@@ -1764,6 +1765,15 @@ t_stree::update_agg_table(
                         reducer
                     )
                 );
+
+                // Intern string results so the underlying buffer outlives the
+                // reducer callback (especially important for WASM builds).
+                if (new_value.is_str()) {
+                    auto interned = m_symtable.get_interned_tscalar(
+                        new_value.to_string().c_str()
+                    );
+                    new_value.set(interned);
+                }
 
                 dst->set_scalar(dst_ridx, new_value);
             } break;

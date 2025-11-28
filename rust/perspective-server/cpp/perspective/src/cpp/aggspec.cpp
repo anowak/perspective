@@ -392,13 +392,20 @@ t_aggspec::get_output_specs(const t_schema& schema) const {
             return mk_col_name_type_vec(name(), DTYPE_FLOAT64);
         }
         case AGGTYPE_UDF_REDUCER: {
-            std::vector<t_col_name_type> rval;
-            rval.reserve(m_odependencies.size());
-            for (const auto& d : m_odependencies) {
-                t_col_name_type tp(d.name(), d.dtype());
-                rval.push_back(tp);
+            // UDF reducers emit a single column whose type matches the input
+            // dependency. The reducer currently supports exactly one
+            // dependency, so use the first dependency's dtype to size the
+            // output column.
+            PSP_VERBOSE_ASSERT(
+                !m_dependencies.empty(),
+                "UDF reducer requires at least one dependency"
+            );
+            const auto& dep = m_dependencies.front();
+            t_dtype dtype = dep.dtype();
+            if (dtype == DTYPE_NONE) {
+                dtype = schema.get_dtype(dep.name());
             }
-            return rval;
+            return mk_col_name_type_vec(name(), dtype);
         }
         case AGGTYPE_AND: {
             return mk_col_name_type_vec(name(), DTYPE_BOOL);

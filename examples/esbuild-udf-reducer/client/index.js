@@ -50,7 +50,7 @@ const view = await remote_table.view({
     columns: ["client"],
     aggregates: {
         name: "first",
-        client: "udf_reducer_join_lines",
+        client: ["udf_reducer_join_lines", ["client"]],
     },
 });
 
