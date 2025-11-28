@@ -6,6 +6,8 @@
 // ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 // ┃ Copyright (c) 2017, the Perspective Authors.                              ┃
 // ┃ ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ ┃
+// ┃ This file is part of the Perspective library, distributed under the terms ┃
+// ┃ of the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). ┃
 // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
 #pragma once
@@ -27,10 +29,8 @@ using t_udf_reducer = std::function<t_tscalar(std::vector<t_tscalar>&)>;
  * or embeddor binary before executing a query that references
  * `AGGTYPE_UDF_REDUCER` aggregations named `udf_reducer_<name>`.
  */
-PERSPECTIVE_EXPORT void register_udf_reducer(
-    const std::string& name,
-    t_udf_reducer reducer
-);
+PERSPECTIVE_EXPORT void
+register_udf_reducer(const std::string& name, t_udf_reducer reducer);
 
 /**
  * Retrieve a reducer UDF by name. Returns `nullptr` if the reducer is not
@@ -52,4 +52,3 @@ PERSPECTIVE_EXPORT void load_udf_plugins_from_env();
 using t_udf_registration_fn = void (*)();
 
 } // namespace perspective
-

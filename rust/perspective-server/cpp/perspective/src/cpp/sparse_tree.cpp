@@ -1756,15 +1756,13 @@ t_stree::update_agg_table(
                 old_value.set(dst->get_scalar(dst_ridx));
                 auto pkeys = get_pkeys(nidx);
 
-                new_value.set(
-                    reduce_from_gstate<t_udf_reducer>(
-                        gstate,
-                        expression_master_table,
-                        dependencies[0].name(),
-                        pkeys,
-                        reducer
-                    )
-                );
+                new_value.set(reduce_from_gstate<t_udf_reducer>(
+                    gstate,
+                    expression_master_table,
+                    dependencies[0].name(),
+                    pkeys,
+                    reducer
+                ));
 
                 // Intern string results so the underlying buffer outlives the
                 // reducer callback (especially important for WASM builds).
