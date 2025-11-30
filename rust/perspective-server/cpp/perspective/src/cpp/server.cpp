@@ -23,8 +23,10 @@
 #include "perspective/table.h"
 #include "perspective/time.h"
 #include "perspective/view.h"
+#include "perspective/udf_registry.h"
 #include "perspective/view_config.h"
 #include "re2/re2.h"
+#include <unordered_set>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -1338,6 +1340,7 @@ ProtoServer::_handle_request(std::uint32_t client_id, Request&& req) {
         case proto::Request::kGetFeaturesReq: {
             proto::Response resp;
             const auto& features = resp.mutable_get_features_resp();
+            load_udf_plugins_from_env();
             features->set_group_by(true);
             features->set_split_by(true);
             features->set_sort(true);
@@ -1470,6 +1473,45 @@ ProtoServer::_handle_request(std::uint32_t client_id, Request&& req) {
 
             (*features->mutable_aggregates())[proto::ColumnType::DATETIME] =
                 datetime_opts;
+
+            const auto udf_reducers = get_registered_udf_reducers();
+            if (!udf_reducers.empty()) {
+                std::vector<proto::ColumnType> all_types;
+                all_types.reserve(features->aggregates_size());
+                for (const auto& entry : features->aggregates()) {
+                    all_types.push_back(
+                        static_cast<proto::ColumnType>(entry.first)
+                    );
+                }
+
+                for (const auto& udf : udf_reducers) {
+                    std::vector<proto::ColumnType> target_types;
+                    if (udf.input_types.empty()) {
+                        target_types = all_types;
+                    } else {
+                        target_types.reserve(udf.input_types.size());
+                        for (const auto& dtype : udf.input_types) {
+                            target_types.push_back(dtype_to_column_type(dtype));
+                        }
+                    }
+
+                    std::unordered_set<proto::ColumnType> seen;
+                    for (const auto& target : target_types) {
+                        if (!seen.insert(target).second) {
+                            continue;
+                        }
+
+                        auto agg_iter =
+                            features->mutable_aggregates()->find(target);
+                        if (agg_iter == features->mutable_aggregates()->end()) {
+                            continue;
+                        }
+
+                        auto agg = agg_iter->second.add_aggregates();
+                        agg->set_name("udf_reducer_" + udf.name);
+                    }
+                }
+            }
 
             push_resp(std::move(resp));
             break;

@@ -705,6 +705,14 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
     endif()
 endif()
 
+# Optional static UDF source to bake plugins directly into the build (useful
+# for WASM where dynamic loading is unavailable). Provide via
+# -DPERSPECTIVE_UDF_STATIC_SRC=/abs/path/to/udf_plugin.cpp.
+if(PERSPECTIVE_UDF_STATIC_SRC)
+    target_sources(psp PRIVATE ${PERSPECTIVE_UDF_STATIC_SRC})
+    target_compile_definitions(psp PRIVATE PSP_STATIC_UDF=1)
+endif()
+
 # TODO this needs to be omitted when built by `cmake-rs`, because
 #`cargo publish --dry-run` complains when this generate `.clangd` in the Rust
 # root dir instead of teh `target` dir.

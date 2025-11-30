@@ -21,7 +21,7 @@ use crate::components::containers::select::*;
 use crate::components::style::LocalStyle;
 use crate::model::*;
 use crate::renderer::*;
-use crate::session::*;
+use crate::session::{AggregateOption, *};
 use crate::*;
 
 #[derive(Properties)]
@@ -41,12 +41,12 @@ impl PartialEq for AggregateSelectorProps {
 }
 
 pub enum AggregateSelectorMsg {
-    SetAggregate(Aggregate),
+    SetAggregate(AggregateOption),
 }
 
 pub struct AggregateSelector {
-    aggregates: Rc<Vec<SelectItem<Aggregate>>>,
-    aggregate: Option<Aggregate>,
+    aggregates: Rc<Vec<SelectItem<AggregateOption>>>,
+    aggregate: Option<AggregateOption>,
 }
 
 impl Component for AggregateSelector {
@@ -56,7 +56,7 @@ impl Component for AggregateSelector {
     fn create(ctx: &Context<Self>) -> Self {
         let mut selector = Self {
             aggregates: Rc::new(vec![]),
-            aggregate: ctx.props().aggregate.clone(),
+            aggregate: None,
         };
 
         selector.aggregates = Rc::new(selector.get_dropdown_aggregates(ctx));
@@ -79,38 +79,62 @@ impl Component for AggregateSelector {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let callback = ctx.link().callback(AggregateSelectorMsg::SetAggregate);
+        let label_for = |agg: &Aggregate| match agg {
+            Aggregate::SingleAggregate(name) => name
+                .strip_prefix("udf_reducer_")
+                .unwrap_or(name)
+                .to_string(),
+            Aggregate::MultiAggregate(name, deps) => format!(
+                "{} by {}",
+                name.strip_prefix("udf_reducer_").unwrap_or(name),
+                deps.join(", ")
+            ),
+        };
+
         let selected_agg = ctx
             .props()
             .aggregate
-            .clone()
-            .or_else(|| {
-                ctx.props()
-                    .session
-                    .metadata()
-                    .get_column_table_type(&ctx.props().column)
-                    .and_then(|x| {
-                        ctx.props().session.metadata().get_features().and_then(|y| {
-                            y.aggregates.get(&(x as u32)).and_then(|z| {
-                                z.aggregates
-                                    .first()
-                                    .map(|q| Aggregate::SingleAggregate(q.name.clone()))
-                            })
+            .as_ref()
+            .and_then(|agg| {
+                self.aggregates
+                    .iter()
+                    .flat_map(|x| match x {
+                        SelectItem::Option(y) => vec![y.clone()],
+                        SelectItem::OptGroup(_, y) => y.clone(),
+                    })
+                    .find(|x| x.aggregate == *agg)
+                    .or_else(|| {
+                        Some(AggregateOption {
+                            aggregate: agg.clone(),
+                            display_name: label_for(agg),
                         })
                     })
             })
-            .unwrap_or_else(|| Aggregate::SingleAggregate("".to_string()));
+            .or_else(|| {
+                self.aggregates
+                    .iter()
+                    .flat_map(|x| match x {
+                        SelectItem::Option(y) => vec![y.clone()],
+                        SelectItem::OptGroup(_, y) => y.clone(),
+                    })
+                    .next()
+            })
+            .unwrap_or_else(|| AggregateOption {
+                aggregate: Aggregate::SingleAggregate("".to_string()),
+                display_name: "".to_string(),
+            });
 
         let values = self.aggregates.clone();
-        let label = ctx.props().aggregate.as_ref().map(|x| match x {
-            Aggregate::SingleAggregate(_) => "".to_string(),
-            Aggregate::MultiAggregate(x, _) => x.to_string(),
-        });
+        let label = match &selected_agg.aggregate {
+            Aggregate::SingleAggregate(_) => None,
+            Aggregate::MultiAggregate(..) => Some(selected_agg.display_name.clone()),
+        };
 
         html! {
             <>
                 <LocalStyle href={css!("aggregate-selector")} />
                 <div class="aggregate-selector-wrapper">
-                    <Select<Aggregate>
+                    <Select<AggregateOption>
                         wrapper_class="aggregate-selector"
                         {values}
                         label={label.map(|x| x.into())}
@@ -124,10 +148,10 @@ impl Component for AggregateSelector {
 }
 
 impl AggregateSelector {
-    pub fn set_aggregate(&mut self, ctx: &Context<Self>, aggregate: Aggregate) {
+    pub fn set_aggregate(&mut self, ctx: &Context<Self>, aggregate: AggregateOption) {
         self.aggregate = Some(aggregate.clone());
         let mut aggregates = ctx.props().session.get_view_config().aggregates.clone();
-        aggregates.insert(ctx.props().column.clone(), aggregate);
+        aggregates.insert(ctx.props().column.clone(), aggregate.aggregate);
         let config = ViewConfigUpdate {
             aggregates: Some(aggregates),
             ..ViewConfigUpdate::default()
@@ -139,12 +163,12 @@ impl AggregateSelector {
             .unwrap_or_log();
     }
 
-    pub fn get_dropdown_aggregates(&self, ctx: &Context<Self>) -> Vec<SelectItem<Aggregate>> {
+    pub fn get_dropdown_aggregates(&self, ctx: &Context<Self>) -> Vec<SelectItem<AggregateOption>> {
         let aggregates = ctx
             .props()
             .session
             .metadata()
-            .get_column_aggregates(&ctx.props().column)
+            .get_column_aggregate_options(&ctx.props().column)
             .map(|x| x.collect::<Vec<_>>())
             .unwrap_or_default();
 
@@ -152,7 +176,10 @@ impl AggregateSelector {
             .clone()
             .into_iter()
             .flat_map(|x| match x {
-                Aggregate::MultiAggregate(x, _) => Some(x),
+                AggregateOption {
+                    aggregate: Aggregate::MultiAggregate(x, _),
+                    ..
+                } => Some(x),
                 _ => None,
             })
             .collect::<HashSet<_>>()
@@ -164,8 +191,9 @@ impl AggregateSelector {
                         .iter()
                         .filter(|y| {
                             matches!(
-                                y,
-                                Aggregate::MultiAggregate(z, _) if &x == z
+                                y.aggregate,
+                                Aggregate::MultiAggregate(ref z, _)
+                                    if &x == z
                             )
                         })
                         .cloned()
@@ -176,7 +204,7 @@ impl AggregateSelector {
 
         let s = aggregates
             .iter()
-            .filter(|x| matches!(x, Aggregate::SingleAggregate(_)))
+            .filter(|x| matches!(x.aggregate, Aggregate::SingleAggregate(_)))
             .cloned()
             .map(SelectItem::Option)
             .chain(multi_aggregates2);

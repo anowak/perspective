@@ -47,4 +47,42 @@ const expected = [
 
 assert.deepEqual(rows, expected);
 
-console.log("UDF reducer aggregation verified.");
+// Add duplicate rows to verify the deduping reducer keeps first-seen order.
+await table.update([
+    { name: "AAPL.N", client: "Ada" },
+    { name: "AAPL.N", client: "Cara" },
+    { name: "NVDA.N", client: "Ben" },
+    { name: "NVDA.N", client: "Ada" },
+]);
+
+const view2 = await table.view({
+    group_by: ["name"],
+    columns: ["client"],
+    sort: [
+        ["name", "asc"],
+    ],
+    aggregates: {
+        name: "first",
+        client: ["udf_reducer_join_unique_lines", ["client"]],
+    },
+});
+
+const result2 = await view2.to_columns();
+await view2.delete();
+
+const rows2 = result2.__ROW_PATH__
+    .map((path, idx) => ({
+        name: path[0],
+        client: result2.client[idx],
+    }))
+    .filter((row) => row.name);
+
+const expected2 = [
+    { name: "AAPL.N", client: "Ada\nBen\nCara" },
+    { name: "AMZN.N", client: "Ada\nCara" },
+    { name: "NVDA.N", client: "Ben\nDana\nAda" },
+];
+
+assert.deepEqual(rows2, expected2);
+
+console.log("UDF reducer aggregation verified for join_lines and join_unique_lines.");

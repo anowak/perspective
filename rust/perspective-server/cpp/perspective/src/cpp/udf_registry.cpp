@@ -19,6 +19,10 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef PSP_STATIC_UDF
+extern "C" void perspective_register_udf_reducers();
+#endif
+
 #ifndef _WIN32
 #include <dlfcn.h>
 #else
@@ -37,9 +41,15 @@ namespace {
         }
 
         void
-        register_reducer(std::string name, t_udf_reducer reducer) {
+        register_reducer(
+            std::string name,
+            t_udf_reducer reducer,
+            std::vector<t_dtype> input_types
+        ) {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_reducers[std::move(name)] = std::move(reducer);
+            m_reducers[std::move(name)] = t_udf_reducer_info{
+                name, std::move(input_types), std::move(reducer)
+            };
         }
 
         t_udf_reducer
@@ -49,7 +59,18 @@ namespace {
             if (iter == m_reducers.end()) {
                 return nullptr;
             }
-            return iter->second;
+            return iter->second.reducer;
+        }
+
+        std::vector<t_udf_reducer_info>
+        list_reducers() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            std::vector<t_udf_reducer_info> reducers;
+            reducers.reserve(m_reducers.size());
+            for (const auto& reducer : m_reducers) {
+                reducers.push_back(reducer.second);
+            }
+            return reducers;
         }
 
         void
@@ -61,6 +82,10 @@ namespace {
                 }
                 m_plugins_loaded = true;
             }
+
+#ifdef PSP_STATIC_UDF
+            perspective_register_udf_reducers();
+#endif
 
             const char* env = std::getenv("PERSPECTIVE_UDF_PLUGINS");
             std::vector<std::string> plugin_paths;
@@ -117,52 +142,9 @@ namespace {
                     m_plugin_handles.push_back(reinterpret_cast<void*>(handle));
                 }
             }
-
-            // Fallback registration for environments that cannot dynamically
-            // load shared libraries (e.g. the WASM build). This mirrors the
-            // sample reducer provided by the `udf-plugin` example so the UDF
-            // path can be exercised even when `dlopen` is unavailable.
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                if (m_reducers.find("join_lines") == m_reducers.end()) {
-                    m_reducers["join_lines"] = [](std::vector<t_tscalar>& values
-                                               ) {
-                        std::string joined;
-                        bool first = true;
-
-                        for (const auto& value : values) {
-                            if (!value.is_valid() || value.is_nan()) {
-                                continue;
-                            }
-
-                            std::string as_string = value.to_string();
-                            if (as_string.empty()) {
-                                continue;
-                            }
-
-                            if (!first) {
-                                joined += "\n";
-                            }
-
-                            joined += as_string;
-                            first = false;
-                        }
-
-                        t_tscalar result;
-                        if (first) {
-                            result.clear();
-                        } else {
-                            char* buffer = strdup(joined.c_str());
-                            result.set(buffer);
-                        }
-
-                        return result;
-                    };
-                }
-            }
         }
 
-        std::unordered_map<std::string, t_udf_reducer> m_reducers;
+        std::unordered_map<std::string, t_udf_reducer_info> m_reducers;
         std::mutex m_mutex;
         bool m_plugins_loaded = false;
         std::vector<void*> m_plugin_handles;
@@ -171,13 +153,24 @@ namespace {
 } // namespace
 
 void
-register_udf_reducer(const std::string& name, t_udf_reducer reducer) {
-    t_udf_registry::get().register_reducer(name, std::move(reducer));
+register_udf_reducer(
+    const std::string& name,
+    t_udf_reducer reducer,
+    std::vector<t_dtype> input_types
+) {
+    t_udf_registry::get().register_reducer(
+        name, std::move(reducer), std::move(input_types)
+    );
 }
 
 t_udf_reducer
 get_udf_reducer(const std::string& name) {
     return t_udf_registry::get().get_reducer(name);
+}
+
+std::vector<t_udf_reducer_info>
+get_registered_udf_reducers() {
+    return t_udf_registry::get().list_reducers();
 }
 
 void

@@ -9,10 +9,11 @@ the browser client requests the UDF aggregate over a WebSocket session.
 ## Prerequisites
 
 1. Build the reducer plugin in [`../udf-plugin`](../udf-plugin/README.md).
-2. Export the plugin path before starting the server:
+2. Export the plugin path before starting the server, or rely on the default
+   baked into `pnpm start`/`server/index.mjs`:
 
    ```bash
-   export PERSPECTIVE_UDF_PLUGINS=${PWD}/../udf-plugin/build/libperspective_udfs.so
+   export PERSPECTIVE_UDF_PLUGINS=${PWD}/../udf-plugin/build/libperspective_udfs.wasm
    ```
 
 ## Running the demo

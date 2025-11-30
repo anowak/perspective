@@ -72,6 +72,9 @@ try {
         `-DRAPIDJSON_BUILD_EXAMPLES=OFF`,
         `-DPSP_PROTO_PATH=${pp.dir}`,
         `-DCMAKE_COLOR_DIAGNOSTICS=ON`,
+        ...(process.env.PERSPECTIVE_UDF_STATIC_SRC
+            ? [`-DPERSPECTIVE_UDF_STATIC_SRC=${process.env.PERSPECTIVE_UDF_STATIC_SRC}`]
+            : []),
     ]);
 
     await run_emsdk([

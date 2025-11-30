@@ -17,6 +17,20 @@ import { promises as fs } from "node:fs";
 import http from "node:http";
 import { WebSocketServer as HttpWebSocketServer } from "ws";
 
+// Default the plugin path for local runs so the UDF reducers are available
+// without having to export env vars manually.
+if (!process.env.PERSPECTIVE_UDF_PLUGINS) {
+    process.env.PERSPECTIVE_UDF_PLUGINS = path.resolve(
+        path.join(
+            path.dirname(new URL(import.meta.url).pathname),
+            "..",
+            "udf-plugin",
+            "build",
+            "libperspective_udfs.wasm",
+        ),
+    );
+}
+
 // Don't need this table since it won't be read from node itself, just need
 // to create it so the WebSocket clients can find it.
 const _TABLE = await securities.getTable();
