@@ -451,6 +451,16 @@ t_view_config::make_aggspec(
         aggspec = t_aggspec(
             column, column, agg_type, dependencies, SORTTYPE_ASCENDING
         );
+    } else if (agg_type == AGGTYPE_UDF_REDUCER) {
+        // Preserve the UDF reducer identifier separately from the output
+        // column name so the reducer can be looked up by its registration
+        // name at runtime.
+        std::string udf_name = aggregate.at(0);
+        const std::string prefix = "udf_reducer_";
+        if (udf_name.rfind(prefix, 0) == 0) {
+            udf_name = udf_name.substr(prefix.size());
+        }
+        aggspec = t_aggspec(column, udf_name, agg_type, dependencies);
     } else {
         aggspec = t_aggspec(column, agg_type, dependencies);
     }

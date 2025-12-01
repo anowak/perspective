@@ -493,6 +493,7 @@ set(SOURCE_FILES
     ${PSP_CPP_SRC}/src/cpp/sort_specification.cpp
     ${PSP_CPP_SRC}/src/cpp/sparse_tree.cpp
     ${PSP_CPP_SRC}/src/cpp/sparse_tree_node.cpp
+    ${PSP_CPP_SRC}/src/cpp/udf_registry.cpp
     ${PSP_CPP_SRC}/src/cpp/step_delta.cpp
     ${PSP_CPP_SRC}/src/cpp/storage.cpp
     ${PSP_CPP_SRC}/src/cpp/storage_impl_linux.cpp
@@ -702,6 +703,14 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
         target_compile_definitions(psp PRIVATE WIN32=1)
         target_compile_definitions(psp PRIVATE _WIN32=1)
     endif()
+endif()
+
+# Optional static UDF source to bake plugins directly into the build (useful
+# for WASM where dynamic loading is unavailable). Provide via
+# -DPERSPECTIVE_UDF_STATIC_SRC=/abs/path/to/udf_plugin.cpp.
+if(PERSPECTIVE_UDF_STATIC_SRC)
+    target_sources(psp PRIVATE ${PERSPECTIVE_UDF_STATIC_SRC})
+    target_compile_definitions(psp PRIVATE PSP_STATIC_UDF=1)
 endif()
 
 # TODO this needs to be omitted when built by `cmake-rs`, because

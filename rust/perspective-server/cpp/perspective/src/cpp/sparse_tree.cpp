@@ -30,6 +30,8 @@
 #include <perspective/data_table.h>
 #include <perspective/filter_utils.h>
 #include <perspective/context_two.h>
+#include <perspective/udf_registry.h>
+#include <functional>
 #include <set>
 #include <utility>
 
@@ -1732,9 +1734,46 @@ t_stree::update_agg_table(
                 new_value.set(second.sub_typesafe(first));
                 dst->set_scalar(dst_ridx, new_value);
             } break;
-            case AGGTYPE_UDF_COMBINER:
             case AGGTYPE_UDF_REDUCER: {
-                // these will be filled in later
+                load_udf_plugins_from_env();
+
+                t_udf_reducer reducer = get_udf_reducer(spec.disp_name());
+
+                if (!reducer) {
+                    PSP_COMPLAIN_AND_ABORT(
+                        std::string("No UDF reducer registered for ")
+                        + spec.disp_name()
+                    );
+                }
+
+                const auto& dependencies = spec.get_dependencies();
+                if (dependencies.size() != 1) {
+                    PSP_COMPLAIN_AND_ABORT(
+                        "UDF reducer requires exactly one dependency column"
+                    );
+                }
+
+                old_value.set(dst->get_scalar(dst_ridx));
+                auto pkeys = get_pkeys(nidx);
+
+                new_value.set(reduce_from_gstate<t_udf_reducer>(
+                    gstate,
+                    expression_master_table,
+                    dependencies[0].name(),
+                    pkeys,
+                    reducer
+                ));
+
+                // Intern string results so the underlying buffer outlives the
+                // reducer callback (especially important for WASM builds).
+                if (new_value.is_str()) {
+                    auto interned = m_symtable.get_interned_tscalar(
+                        new_value.to_string().c_str()
+                    );
+                    new_value.set(interned);
+                }
+
+                dst->set_scalar(dst_ridx, new_value);
             } break;
             case AGGTYPE_SUM_NOT_NULL: {
                 old_value.set(dst->get_scalar(dst_ridx));

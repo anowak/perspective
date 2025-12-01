@@ -31,6 +31,7 @@ use wasm_bindgen::prelude::*;
 use yew::html::ImplicitClone;
 use yew::prelude::*;
 
+pub use self::metadata::AggregateOption;
 use self::metadata::*;
 use self::replace_expression_update::*;
 pub use self::view_subscription::ViewStats;

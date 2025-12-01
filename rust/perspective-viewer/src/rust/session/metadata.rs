@@ -11,6 +11,7 @@
 // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::iter::IntoIterator;
 use std::ops::{Deref, DerefMut};
 
@@ -23,6 +24,26 @@ use crate::*;
 struct SessionViewExpressionMetadata {
     edited: HashMap<String, String>,
     expressions: perspective_client::ExprValidationResult,
+}
+
+#[derive(Clone)]
+pub struct AggregateOption {
+    pub aggregate: Aggregate,
+    pub display_name: String,
+}
+
+impl PartialEq for AggregateOption {
+    fn eq(&self, other: &Self) -> bool {
+        self.aggregate == other.aggregate
+    }
+}
+
+impl Eq for AggregateOption {}
+
+impl fmt::Display for AggregateOption {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{}", self.display_name)
+    }
 }
 
 /// Metadata state reflects data we could fetch from a `View`, but would like to
@@ -265,15 +286,37 @@ impl SessionMetadata {
         &'a self,
         name: &str,
     ) -> Option<Box<dyn Iterator<Item = Aggregate> + 'a>> {
+        let aggregates = self
+            .get_column_aggregate_options(name)?
+            .map(|x| x.aggregate);
+        Some(Box::new(aggregates))
+    }
+
+    pub fn get_column_aggregate_options<'a>(
+        &'a self,
+        name: &str,
+    ) -> Option<Box<dyn Iterator<Item = AggregateOption> + 'a>> {
         let coltype = self.get_column_table_type(name)?;
         let f = self.get_features()?.aggregates.get(&(coltype as u32))?;
+
+        let label_for = |agg_name: &str| {
+            if let Some(stripped) = agg_name.strip_prefix("udf_reducer_") {
+                stripped.to_string()
+            } else {
+                agg_name.to_string()
+            }
+        };
 
         let aggregates = f
             .aggregates
             .iter()
             .flat_map(move |x| {
+                let label = label_for(&x.name);
                 if x.args.is_empty() {
-                    Some(vec![Aggregate::SingleAggregate(x.name.to_string())])
+                    Some(vec![AggregateOption {
+                        aggregate: Aggregate::SingleAggregate(x.name.to_string()),
+                        display_name: label,
+                    }])
                 } else {
                     // todo: handle multi args
                     let dtype = x.args.first().unwrap();
@@ -294,8 +337,11 @@ impl SessionMetadata {
                                     || (coltype == &ColumnType::Float
                                         && *dtype == ColumnType::Integer as i32)
                             })
-                            .map(|(name, _)| {
-                                Aggregate::MultiAggregate(x.name.to_string(), vec![name])
+                            .map(|(name, _)| AggregateOption {
+                                display_name: format!("{} by {}", label, name),
+                                aggregate: Aggregate::MultiAggregate(x.name.to_string(), vec![
+                                    name,
+                                ]),
                             })
                             .collect(),
                     )
